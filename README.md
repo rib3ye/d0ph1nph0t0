@@ -1,108 +1,98 @@
 # d0ph1nph0t0
 
-> A Cursor [Agent Skill](https://cursor.com/docs/agent/skills) that turns any
-> picture into Flipper Zero–compatible 1-bit assets (128×64 ST7567S, FAP icons,
-> XBM, dolphin animation frames).
+> Tu7n 4ny p1c 1nt0 4 Fl1pp3r Z3r0–r34dy 1-b1t 1m4g3.
 
-## What it does
+A Cursor [Agent Skill](https://cursor.com/docs/agent/skills). Hand it a photo
+or a logo, and it spits out images that look right on the Flipper Zero's tiny
+black-and-white screen.
 
-Drop in a photo, logo, or screenshot and out comes:
+## What you get
 
-- **`<name>_128x64.png`** — full-screen 1-bit Floyd-Steinberg dithered, ready
-  for a FAP `images/` folder (ufbt compiles to `.bm`)
-- **`<name>_64x64.png`** — square face-cropped 1-bit icon (menu thumbs,
-  animation frames)
-- **`<name>_<W>x<H>.xbm`** — XBM byte array for `canvas_draw_xbm` in C or
-  the `gui` xbm widget in mJS
-- **`<name>_preview_4x.png`** — 4× nearest-neighbor preview so you can verify
-  the dither without flashing the device
+For every image you give it, you get back:
 
-Custom sizes (10×10 Apps Catalog icons, 14×14 menu icons, full-screen art,
-animation frames) are first-class via `--size WxH[:mode]`.
+- a full-screen 128×64 version (drops straight into a FAP's `images/` folder)
+- a square 64×64 version cropped around the face/center (good for menus or
+  animations)
+- an `.xbm` file if you want to paste the bytes directly into C or mJS code
+- a 4× preview PNG so you can actually see what the dither looks like
+  without copying it to your Flipper
 
-## Why a tonal pipeline matters
+You can also ask for any other size, like 10×10 for the App Catalog icon or
+14×14 for menu rows.
 
-Naive grayscale + Floyd-Steinberg crushes faces because skin sits mid-gray
-while hair is near-black — the dither can't separate them and you get a
-stippled blob. This skill ships a tuned pipeline (autocontrast → gamma 2.0
-midtone lift → unsharp → FS dither) that paints faces mostly-white with sparse
-dots while leaving hair as a clean black silhouette. Eyes, glasses, and
-smiles survive at 64×64.
+## Why it exists
+
+If you just convert a photo to grayscale and dither it, faces turn into a
+black blob because skin and hair end up too close in brightness. This script
+brightens the face first, sharpens the edges, then dithers — so eyes, mouths,
+and glasses still show up at 64×64.
 
 ## Install
 
-This is a Cursor Agent Skill, so it lives at a known path on disk:
+Clone it into Cursor's skills folder. The folder name has to be
+`flipper-image` (that's what the skill calls itself), even though the repo
+is `d0ph1nph0t0`:
 
 ```bash
 git clone https://github.com/rib3ye/d0ph1nph0t0.git ~/.cursor/skills/flipper-image
 ```
 
-Cursor will pick it up automatically next session. The agent discovers it
-whenever you ask anything that smells like Flipper image work — "make this
-Flipper-compatible", "1-bit dither for the LCD", "FAP icon", "convert for my
-Flipper", etc.
+Cursor picks it up on the next session. After that, just say something like
+"make this Flipper-compatible" or "convert this for my Flipper" and the agent
+runs the script for you.
 
-### Dependencies
-
-- Python 3.10+
-- [Pillow](https://pillow.readthedocs.io/) (any recent version)
-
-A throwaway venv keeps macOS PEP 668 happy:
+You also need Python 3.10+ and Pillow:
 
 ```bash
 python3 -m venv /tmp/flipperimg-venv
 /tmp/flipperimg-venv/bin/pip install --quiet Pillow
 ```
 
-## Quick start
+## Run it yourself
+
+The defaults give you 128×64, 64×64, an XBM, and a 4× preview:
 
 ```bash
-# defaults: 128x64 letterbox + 64x64 face-crop + XBM + 4x preview
 /tmp/flipperimg-venv/bin/python ~/.cursor/skills/flipper-image/scripts/make_flipper_images.py \
     out/ photo.png
-
-# Apps Catalog icon set + full-screen splash
-/tmp/flipperimg-venv/bin/python ~/.cursor/skills/flipper-image/scripts/make_flipper_images.py \
-    out/ \
-    --size 10x10:face --size 14x14:face --size 128x64:fit \
-    --xbm-of 14x14 \
-    logo=logo.png
-
-# multiple sources with explicit stems
-/tmp/flipperimg-venv/bin/python ~/.cursor/skills/flipper-image/scripts/make_flipper_images.py \
-    out/ kid1=p1.png kid2=p2.png
 ```
 
-## CLI
+Multiple images, with clean names:
+
+```bash
+... make_flipper_images.py out/ kid1=p1.png kid2=p2.png
+```
+
+Custom sizes (App Catalog icon + menu icon + full-screen splash):
+
+```bash
+... make_flipper_images.py out/ \
+    --size 10x10:face --size 14x14:face --size 128x64:fit \
+    logo=logo.png
+```
+
+## Options
 
 ```
 make_flipper_images.py OUT_DIR SOURCE [SOURCE ...]
-                       [--size WxH[:mode]]...   replaces defaults; repeatable
-                       [--xbm-of WxH]...        which size(s) get XBM
-                       [--no-preview]           skip the 4x preview PNG
-                       [--gamma N]              midtone lift (default 2.0)
-                       [--autocontrast N]       cutoff % (default 5)
+                       [--size WxH[:mode]]   replaces defaults; can repeat
+                       [--xbm-of WxH]        which size(s) get an XBM
+                       [--no-preview]        skip the 4x preview
+                       [--gamma N]           brighten the face (default 2.0)
+                       [--autocontrast N]    contrast cutoff % (default 5)
 
-SOURCE := <path> | <name>=<path>
-mode   := fit (letterbox, default) | face (square crop, biased for portraits)
+SOURCE := <path>  or  <name>=<path>
+mode   := fit (letterbox) | face (square crop, biased for portraits)
 ```
 
-If the face still looks too dark, push `--gamma 2.4`. If highlights blow out,
-drop to `--gamma 1.6 --autocontrast 2`.
+If a face still looks too dark, try `--gamma 2.4`. If white shirts or
+backgrounds blow out, try `--gamma 1.6 --autocontrast 2`.
 
-## Common Flipper sizes
+## Using the output in a FAP
 
-| Size | Use | Mode |
-|---|---|---|
-| 128×64 | full-screen art | `fit` |
-| 64×64 | menu thumbnail / animation frame | `face` |
-| 14×14 | submenu icon, settings row | `face` |
-| 10×10 | `fap_icon` for the Apps Catalog | `face` |
-
-## Using outputs in a FAP
+Drop the PNGs into `images/` next to your `application.fam`:
 
 ```python
-# application.fam
 App(
     appid="myapp",
     name="My App",
@@ -114,7 +104,7 @@ App(
 )
 ```
 
-ufbt generates `<appid>_icons.h` with `I_<filename>` symbols:
+ufbt builds them into a generated header. The symbol is `I_<filename>`:
 
 ```c
 #include <gui/canvas.h>
@@ -126,7 +116,7 @@ static void draw_callback(Canvas* canvas, void* ctx) {
 }
 ```
 
-Or skip the asset pipeline entirely with the XBM:
+If you'd rather skip the asset pipeline, include the XBM directly:
 
 ```c
 #include "kid1_128x64.xbm"
@@ -134,17 +124,17 @@ canvas_draw_xbm(canvas, 0, 0,
     kid1_128x64_width, kid1_128x64_height, kid1_128x64_bits);
 ```
 
-## Repo layout
+## What's in the repo
 
 ```
 .
-├── SKILL.md                 # the skill itself; Cursor reads frontmatter
-├── README.md                # you are here
-├── LICENSE
+├── SKILL.md                       # the actual skill (Cursor reads this)
+├── README.md                      # you're reading it
+├── LICENSE                        # MIT
 └── scripts/
-    └── make_flipper_images.py
+    └── make_flipper_images.py     # the converter
 ```
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
