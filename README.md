@@ -6,6 +6,30 @@ A Cursor [Agent Skill](https://cursor.com/docs/agent/skills). Hand it a photo
 or a logo, and it spits out images that look right on the Flipper Zero's tiny
 black-and-white screen.
 
+## Before and after
+
+<table>
+  <tr>
+    <th>Original</th>
+    <th>Flipper 64×64 (zoomed 4× so you can see it)</th>
+    <th>Actual 64×64</th>
+  </tr>
+  <tr>
+    <td><img src="examples/coin_original.png" height="180" alt="coin logo"></td>
+    <td><img src="examples/coin_64x64_zoom4x.png" height="180" alt="64x64 dithered, scaled up"></td>
+    <td><img src="examples/coin_64x64.png" alt="actual 64x64 output"></td>
+  </tr>
+  <tr>
+    <td><img src="examples/scene_original.png" height="180" alt="landscape"></td>
+    <td><img src="examples/scene_64x64_zoom4x.png" height="180" alt="64x64 dithered, scaled up"></td>
+    <td><img src="examples/scene_64x64.png" alt="actual 64x64 output"></td>
+  </tr>
+</table>
+
+The middle column is the same image as the right column, just blown up 4× with
+nearest-neighbor scaling so you can actually see the dither. On the Flipper's
+real screen each pixel is much sharper than what your monitor shows you here.
+
 ## What you get
 
 For every image you give it, you get back:
